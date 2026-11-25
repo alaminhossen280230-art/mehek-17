@@ -25,7 +25,8 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @workspace/space-warp build
         env:
-          BASE_PATH: /
+          PORT: "3000"
+          BASE_PATH: /Levi/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: artifacts/space-warp/dist/public
