@@ -29,11 +29,12 @@ jobs:
             const fs = require("fs");
             const p = "artifacts/space-warp/src/pages/BirthdayPage.tsx";
             let c = fs.readFileSync(p, "utf8");
-            c = c.replace("audioRef.current = ctx;", "if (ctx.state === \"suspended\") await ctx.resume(); audioRef.current = ctx;");
+            c = c.replaceAll("audioRef.current = ctx;", "if (ctx.state === \"suspended\") ctx.resume(); audioRef.current = ctx;");
             c = c.replace("{audio:true}", "{audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}");
             c = c.replace(/78/g, "22").replace("frames>=8", "frames>=3");
             const skipBtn = `<button onClick={() => { blowOut(); setShowWish(true); setShowCreds(true); }} style={{ background: "rgba(255,255,255,0.45)", border: "1px solid rgba(180,50,90,0.35)", borderRadius: "50px", padding: "7px 22px", color: "#7a1840", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "system-ui" }}>Skip</button>`;
-            c = c.replace("🎤 Blow the candle!</button>", "🎤 Blow the candle!</button>" + skipBtn);
+            c = c.replace("{!micActive && !micError && (", "{!micActive && !micError && (<>");
+            c = c.replace("🎤 Blow the candle!</button>", "🎤 Blow the candle!</button>" + skipBtn + "</>");
             c = c.replace("transition:\"width 0.05s linear\"}}/>", "transition:\"width 0.05s linear\"}}/></div>" + skipBtn + "<div style={{display:\"none\"}}>");
             fs.writeFileSync(p, c);
           '
