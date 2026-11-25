@@ -27,6 +27,7 @@ jobs:
           find artifacts/space-warp/src -type f \( -name "*.tsx" -o -name "*.ts" \) -exec sed -i -E 's/(src|gif)( *= *| *: *)(["\x27`])\//\1\2\3.\//g' {} +
           sed -i 's/78/30/g' artifacts/space-warp/src/pages/BirthdayPage.tsx
           sed -i 's/frames>=8/frames>=4/g' artifacts/space-warp/src/pages/BirthdayPage.tsx
+          sed -i 's|🎤 Blow the candle!</button>|🎤 Blow the candle!</button><button onClick={() => { blowOut(); setShowWish(true); setShowCreds(true); }} style={{ background: "rgba(255,255,255,0.45)", border: "1px solid rgba(180,50,90,0.35)", borderRadius: "50px", padding: "7px 20px", color: "#7a1840", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "system-ui" }}>Skip ⏭️</button>|g' artifacts/space-warp/src/pages/BirthdayPage.tsx
       - run: pnpm --filter @workspace/space-warp build
         env:
           PORT: "3000"
