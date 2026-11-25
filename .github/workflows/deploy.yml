@@ -34,62 +34,52 @@ jobs:
             c = c.replace("analyRef.current.getByteFrequencyData(data);", "analyRef.current.getByteTimeDomainData(data);");
             c = c.replace("const avg=data.reduce((a,b)=>a+b,0)/data.length;", "const avg=data.reduce((a,b)=>a+Math.abs(b-128),0)/data.length;");
             c = c.replace(/78/g, "12").replace("frames>=8", "frames>=3");
-            c = c.replace("linearRampToValueAtTime(0.1,t+e+0.03)", "linearRampToValueAtTime(0.18,t+e+0.03)");
             c = c.replace("@keyframes creditsFade { 0% { opacity:0; } 100% { opacity:1; } }", "@keyframes creditsFade { 0% { opacity:0; } 100% { opacity:1; } } @keyframes toastSlide { 0% { transform: translateY(-140%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }");
-            const creditsAudio = `function EndCredits() {
-              useEffect(() => {
-                let alive = true;
-                let timer: any;
+            const cakeMusic = `const CAKE_DOT_COLORS = ["#ff85c2","#ffd700","#c084fc","#60c8f5"];
+            useEffect(() => {
+              if (showCreds) return;
+              let alive = true;
+              let timer: any;
+              let ctx: AudioContext | null = null;
+              const startSong = () => {
+                if (!alive) return;
                 try {
-                  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                  if (!ctx) ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
                   if (ctx.state === "suspended") ctx.resume();
-                  const playLevelUp = () => {
-                    const t = ctx.currentTime;
-                    const chime = [659.25, 783.99, 1318.51, 1046.50, 1174.66, 1567.98];
-                    chime.forEach((f, idx) => {
-                      const st = t + idx * 0.085;
-                      const dur = idx === chime.length - 1 ? 0.55 : 0.16;
-                      ["triangle", "sine"].forEach((type, layer) => {
-                        const o = ctx.createOscillator(); const g = ctx.createGain();
-                        o.type = type as OscillatorType;
-                        o.frequency.setValueAtTime(layer === 1 ? f * 2 : f, st);
-                        o.connect(g); g.connect(ctx.destination);
-                        g.gain.setValueAtTime(0, st);
-                        g.gain.linearRampToValueAtTime(layer === 1 ? 0.06 : 0.18, st + 0.015);
-                        g.gain.exponentialRampToValueAtTime(0.001, st + dur);
-                        o.start(st); o.stop(st + dur + 0.05);
-                      });
-                    });
-                  };
-                  const playLoop = () => {
-                    if (!alive) return;
-                    const t = ctx.currentTime;
-                    const notes = [
-                      [261.6,.25],[261.6,.25],[293.7,.5],[261.6,.5],[349.2,.5],[329.6,1],
-                      [261.6,.25],[261.6,.25],[293.7,.5],[261.6,.5],[392,.5],[349.2,1],
-                      [261.6,.25],[261.6,.25],[523.3,.5],[440,.5],[349.2,.5],[329.6,.5],[293.7,1],
-                      [466.2,.25],[466.2,.25],[440,.5],[349.2,.5],[392,.5],[349.2,1.5]
-                    ];
-                    let e = 0;
-                    notes.forEach(([freq, dur]) => {
-                      const o = ctx.createOscillator(); const g = ctx.createGain();
-                      o.connect(g); g.connect(ctx.destination);
-                      o.frequency.value = freq; o.type = "triangle";
-                      g.gain.setValueAtTime(0, t + e);
-                      g.gain.linearRampToValueAtTime(0.14, t + e + 0.03);
-                      g.gain.exponentialRampToValueAtTime(0.001, t + e + dur * 0.85);
-                      o.start(t + e); o.stop(t + e + dur);
-                      e += dur * 0.52;
-                    });
-                    timer = setTimeout(playLoop, (e + 1.2) * 1000);
-                  };
-                  playLevelUp();
-                  setTimeout(playLoop, 1100);
-                  return () => { alive = false; clearTimeout(timer); ctx.close().catch(() => {}); };
+                  const t = ctx.currentTime;
+                  const notes = [
+                    [261.6,.25],[261.6,.25],[293.7,.5],[261.6,.5],[349.2,.5],[329.6,1],
+                    [261.6,.25],[261.6,.25],[293.7,.5],[261.6,.5],[392,.5],[349.2,1],
+                    [261.6,.25],[261.6,.25],[523.3,.5],[440,.5],[349.2,.5],[329.6,.5],[293.7,1],
+                    [466.2,.25],[466.2,.25],[440,.5],[349.2,.5],[392,.5],[349.2,1.5]
+                  ];
+                  let e = 0;
+                  notes.forEach(([freq, dur]) => {
+                    const o = ctx!.createOscillator(); const g = ctx!.createGain();
+                    o.connect(g); g.connect(ctx!.destination);
+                    o.frequency.value = freq; o.type = "triangle";
+                    g.gain.setValueAtTime(0, t + e);
+                    g.gain.linearRampToValueAtTime(0.12, t + e + 0.03);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + e + dur * 0.85);
+                    o.start(t + e); o.stop(t + e + dur);
+                    e += dur * 0.52;
+                  });
+                  timer = setTimeout(startSong, (e + 1.2) * 1000);
                 } catch {}
+              };
+              startSong();
+              window.addEventListener("pointerdown", startSong, { once: true });
+              return () => { alive = false; clearTimeout(timer); window.removeEventListener("pointerdown", startSong); ctx?.close().catch(() => {}); };
+            }, [showCreds]);`;
+            c = c.replace("const CAKE_DOT_COLORS = [\"#ff85c2\",\"#ffd700\",\"#c084fc\",\"#60c8f5\"];", cakeMusic);
+            const creditsHook = `function EndCredits() {
+              useEffect(() => {
+                const audio = new Audio("./The%20end.mp3");
+                audio.play().catch(() => {});
+                return () => { audio.pause(); };
               }, []);`;
-            c = c.replace("function EndCredits() {", creditsAudio);
-            c = c.replace("animation:\"creditsFade 1.5s ease both\"}>", "animation:\"creditsFade 1.5s ease both\"}><img src=\"./graduation-achievement-v0-0jaqu6i0po0b1.png\" alt=\"Achievement Made! The End?\" style={{position:\"fixed\",top:14,right:14,zIndex:60,width:\"clamp(215px,62vw,310px)\",height:\"auto\",imageRendering:\"pixelated\",boxShadow:\"0 8px 24px rgba(0,0,0,0.75)\",animation:\"toastSlide 0.65s cubic-bezier(0.22,1,0.36,1) both\",pointerEvents:\"none\"}} />");
+            c = c.replace("function EndCredits() {", creditsHook);
+            c = c.replace("{showCreds && <EndCredits/>}", "{showCreds && (<><EndCredits/><img src=\"./graduation-achievement-v0-0jaqu6i0po0b1.png\" alt=\"Achievement Made! The End?\" style={{position:\"fixed\",top:14,right:14,zIndex:999,width:\"clamp(215px,62vw,310px)\",height:\"auto\",imageRendering:\"pixelated\",boxShadow:\"0 8px 24px rgba(0,0,0,0.75)\",animation:\"toastSlide 0.65s cubic-bezier(0.22,1,0.36,1) both\",pointerEvents:\"none\"}} /></>)}");
             const skipBtn = `<button onClick={() => { blowOut(); setShowWish(true); setShowCreds(true); }} style={{ background: "rgba(255,255,255,0.45)", border: "1px solid rgba(180,50,90,0.35)", borderRadius: "50px", padding: "7px 22px", color: "#7a1840", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "system-ui" }}>Skip</button>`;
             c = c.replace("{!micActive && !micError && (", "{!micActive && !micError && (<>");
             c = c.replace("🎤 Blow the candle!</button>", "🎤 Blow the candle!</button>" + skipBtn + "</>");
