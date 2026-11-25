@@ -25,168 +25,136 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: |
           find artifacts/space-warp/src -type f \( -name "*.tsx" -o -name "*.ts" \) -exec sed -i -E 's/(src|gif)( *= *| *: *)(["\x27`])\//\1\2\3.\//g' {} +
-          node -e '
-            const fs = require("fs");
-            let html = fs.readFileSync("artifacts/space-warp/index.html", "utf8");
-            html = html.replace(/<title>.*?<\/title>/, "<title>Happy Birthday Mehek! 🌸</title>");
-            html = html.replace(/<link[^>]*rel="[^"]*icon[^"]*"[^>]*>/gi, "");
-            html = html.replace("</head>", "<link rel=\"icon\" type=\"image/png\" href=\"./29a10c0c97b545a482e4033983bfd46e.png?v=2\" /><link rel=\"apple-touch-icon\" href=\"./29a10c0c97b545a482e4033983bfd46e.png?v=2\" /></head>");
-            fs.writeFileSync("artifacts/space-warp/index.html", html);
+          node << 'EOF'
+          const fs = require("fs");
+          let html = fs.readFileSync("artifacts/space-warp/index.html", "utf8");
+          html = html.replace(/<title>.*?<\/title>/, "<title>Happy Birthday Mehek! 🌸</title>");
+          html = html.replace(/<link[^>]*rel="[^"]*icon[^"]*"[^>]*>/gi, "");
+          html = html.replace("</head>", '<link rel="icon" type="image/png" href="./29a10c0c97b545a482e4033983bfd46e.png?v=2" /><link rel="apple-touch-icon" href="./29a10c0c97b545a482e4033983bfd46e.png?v=2" /></head>');
+          fs.writeFileSync("artifacts/space-warp/index.html", html);
 
-            const cleanAmbient = `import { useEffect, useRef } from "react";
-import { Phase } from "../App";
+          const cleanAmbient = [
+            'import { useEffect, useRef } from "react";',
+            'import { Phase } from "../App";',
+            'export default function AmbientMusic(props: { phase: Phase }) {',
+            '  const { phase } = props;',
+            '  const travelRef = useRef<HTMLAudioElement | null>(null);',
+            '  const spaceRef = useRef<HTMLAudioElement | null>(null);',
+            '  const phaseRef = useRef<Phase>(phase);',
+            '  phaseRef.current = phase;',
+            '  useEffect(() => {',
+            '    const travel = new Audio("./travel.mp3");',
+            '    const space = new Audio("./space.mp3");',
+            '    space.loop = true;',
+            '    space.volume = 0.65;',
+            '    travelRef.current = travel;',
+            '    spaceRef.current = space;',
+            '    const unlock = () => {',
+            '      if (document.hidden) return;',
+            '      const p = phaseRef.current;',
+            '      if ((p === "warp" || p === "arriving") && travel.paused && !travel.ended) travel.play().catch(() => {});',
+            '      else if (p === "orbit" && space.paused) space.play().catch(() => {});',
+            '    };',
+            '    const onVis = () => {',
+            '      if (document.hidden) { travel.pause(); space.pause(); }',
+            '      else {',
+            '        const p = phaseRef.current;',
+            '        if ((p === "warp" || p === "arriving") && !travel.ended) travel.play().catch(() => {});',
+            '        else if (p === "orbit") space.play().catch(() => {});',
+            '      }',
+            '    };',
+            '    window.addEventListener("pointerdown", unlock);',
+            '    document.addEventListener("visibilitychange", onVis);',
+            '    return () => { window.removeEventListener("pointerdown", unlock); document.removeEventListener("visibilitychange", onVis); travel.pause(); space.pause(); };',
+            '  }, []);',
+            '  useEffect(() => {',
+            '    const travel = travelRef.current;',
+            '    const space = spaceRef.current;',
+            '    if (!travel || !space) return;',
+            '    if (phase === "warp" || phase === "arriving") { space.pause(); if (!document.hidden && !travel.ended) travel.play().catch(() => {}); }',
+            '    else if (phase === "orbit") { travel.pause(); if (!document.hidden) space.play().catch(() => {}); }',
+            '    else { travel.pause(); space.pause(); }',
+            '  }, [phase]);',
+            '  return null;',
+            '}'
+          ].join("\n");
+          fs.writeFileSync("artifacts/space-warp/src/components/AmbientMusic.tsx", cleanAmbient);
 
-export default function AmbientMusic({ phase }: { phase: Phase }) {
-  const travelRef = useRef<HTMLAudioElement | null>(null);
-  const spaceRef = useRef<HTMLAudioElement | null>(null);
-  const phaseRef = useRef<Phase>(phase);
-  phaseRef.current = phase;
-
-  useEffect(() => {
-    const travel = new Audio("./travel.mp3");
-    const space = new Audio("./space.mp3");
-    space.loop = true;
-    space.volume = 0.65;
-    travelRef.current = travel;
-    spaceRef.current = space;
-
-    const unlock = () => {
-      if (document.hidden) return;
-      const p = phaseRef.current;
-      if ((p === "warp" || p === "arriving") && travel.paused && !travel.ended) {
-        travel.play().catch(() => {});
-      } else if (p === "orbit" && space.paused) {
-        space.play().catch(() => {});
-      }
-    };
-
-    const onVis = () => {
-      if (document.hidden) {
-        travel.pause();
-        space.pause();
-      } else {
-        const p = phaseRef.current;
-        if ((p === "warp" || p === "arriving") && !travel.ended) travel.play().catch(() => {});
-        else if (p === "orbit") space.play().catch(() => {});
-      }
-    };
-
-    window.addEventListener("pointerdown", unlock);
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      window.removeEventListener("pointerdown", unlock);
-      document.removeEventListener("visibilitychange", onVis);
-      travel.pause();
-      space.pause();
-    };
-  }, []);
-
-  useEffect(() => {
-    const travel = travelRef.current;
-    const space = spaceRef.current;
-    if (!travel || !space) return;
-
-    if (phase === "warp" || phase === "arriving") {
-      space.pause();
-      if (!document.hidden && !travel.ended) travel.play().catch(() => {});
-    } else if (phase === "orbit") {
-      travel.pause();
-      if (!document.hidden) space.play().catch(() => {});
-    } else {
-      travel.pause();
-      space.pause();
-    }
-  }, [phase]);
-
-  return null;
-}`;
-            fs.writeFileSync("artifacts/space-warp/src/components/AmbientMusic.tsx", cleanAmbient);
-
-            const p = "artifacts/space-warp/src/pages/BirthdayPage.tsx";
-            let c = fs.readFileSync(p, "utf8");
-            c = c.replace("setTimeout(()=>doHappyBirthday(ctx),700);", "");
-            c = c.replaceAll("audioRef.current = ctx;", "if (ctx.state === \"suspended\") ctx.resume(); audioRef.current = ctx;");
-            c = c.replace("{audio:true}", "{audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}");
-            c = c.replace("analyRef.current.getByteFrequencyData(data);", "analyRef.current.getByteTimeDomainData(data);");
-            c = c.replace("const avg=data.reduce((a,b)=>a+b,0)/data.length;", "const avg=data.reduce((a,b)=>a+Math.abs(b-128),0)/data.length;");
-            c = c.replace(/78/g, "12").replace("frames>=8", "frames>=3");
-            c = c.replace("@keyframes creditsFade { 0% { opacity:0; } 100% { opacity:1; } }", "@keyframes creditsFade { 0% { opacity:0; } 100% { opacity:1; } } @keyframes toastSlide { 0% { transform: translateY(-140%); opacity: 0; } 7% { transform: translateY(0); opacity: 1; } 93% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-140%); opacity: 0; } }");
-            const cakeMusic = `const CAKE_DOT_COLORS = ["#ff85c2","#ffd700","#c084fc","#60c8f5"];
-            useEffect(() => {
-              if (showCreds) return;
-              let alive = true;
-              let timer: any;
-              let ctx: AudioContext | null = null;
-              const startSong = () => {
-                if (!alive || document.hidden) return;
-                try {
-                  if (!ctx) ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                  if (ctx.state === "suspended") ctx.resume();
-                  const t = ctx.currentTime;
-                  const notes = [
-                    [261.6,.25],[261.6,.25],[293.7,.5],[261.6,.5],[349.2,.5],[329.6,1],
-                    [261.6,.25],[261.6,.25],[293.7,.5],[261.6,.5],[392,.5],[349.2,1],
-                    [261.6,.25],[261.6,.25],[523.3,.5],[440,.5],[349.2,.5],[329.6,.5],[293.7,1],
-                    [466.2,.25],[466.2,.25],[440,.5],[349.2,.5],[392,.5],[349.2,1.5]
-                  ];
-                  let e = 0;
-                  notes.forEach(([freq, dur]) => {
-                    const o = ctx!.createOscillator(); const g = ctx!.createGain();
-                    o.connect(g); g.connect(ctx!.destination);
-                    o.frequency.value = freq; o.type = "triangle";
-                    g.gain.setValueAtTime(0, t + e);
-                    g.gain.linearRampToValueAtTime(0.12, t + e + 0.03);
-                    g.gain.exponentialRampToValueAtTime(0.001, t + e + dur * 0.85);
-                    o.start(t + e); o.stop(t + e + dur);
-                    e += dur * 0.52;
-                  });
-                  timer = setTimeout(startSong, (e + 1.2) * 1000);
-                } catch {}
-              };
-              const onVis = () => { if (document.hidden) { clearTimeout(timer); ctx?.suspend(); } else { ctx?.resume(); startSong(); } };
-              document.addEventListener("visibilitychange", onVis);
-              startSong();
-              window.addEventListener("pointerdown", startSong, { once: true });
-              return () => { alive = false; clearTimeout(timer); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("pointerdown", startSong); ctx?.close().catch(() => {}); };
-            }, [showCreds]);`;
-            c = c.replace("const CAKE_DOT_COLORS = [\"#ff85c2\",\"#ffd700\",\"#c084fc\",\"#60c8f5\"];", cakeMusic);
-            const creditsHook = `function EndCredits() {
-              useEffect(() => {
-                const sfx = new Audio("./The%20end.mp3");
-                const bgm = new Audio("./Blind%20spots.mp3");
-                bgm.loop = true;
-                let bgmStarted = false;
-                const startBgm = () => {
-                  if (bgmStarted || document.hidden) return;
-                  bgmStarted = true;
-                  try { bgm.currentTime = 13; } catch {}
-                  bgm.play().catch(() => {});
-                };
-                bgm.addEventListener("loadedmetadata", () => { bgm.currentTime = 13; }, { once: true });
-                sfx.addEventListener("ended", startBgm, { once: true });
-                const t1 = setTimeout(() => {
-                  if (!document.hidden) sfx.play().catch(() => startBgm());
-                }, 2000);
-                const t2 = setTimeout(startBgm, 3600);
-                const onVis = () => {
-                  if (document.hidden) { sfx.pause(); bgm.pause(); }
-                  else if (bgmStarted) { bgm.play().catch(() => {}); }
-                };
-                document.addEventListener("visibilitychange", onVis);
-                return () => { clearTimeout(t1); clearTimeout(t2); document.removeEventListener("visibilitychange", onVis); sfx.pause(); bgm.pause(); };
-              }, []);`;
-            c = c.replace("function EndCredits() {", creditsHook);
-            c = c.replace("{showCreds && <EndCredits/>}", "{showCreds && (<><EndCredits/><img src=\"./graduation-achievement-v0-0jaqu6i0po0b1.png\" alt=\"Achievement Made! The End?\" style={{position:\"fixed\",top:14,right:14,zIndex:999,width:\"clamp(215px,62vw,310px)\",height:\"auto\",imageRendering:\"pixelated\",boxShadow:\"0 8px 24px rgba(0,0,0,0.75)\",transform:\"translateY(-140%)\",opacity:0,animation:\"toastSlide 9s cubic-bezier(0.22,1,0.36,1) 2s forwards\",pointerEvents:\"none\"}} /></>)}");
-            const skipBtn = `<button onClick={() => { blowOut(); setShowWish(true); setShowCreds(true); }} style={{ background: "rgba(255,255,255,0.45)", border: "1px solid rgba(180,50,90,0.35)", borderRadius: "50px", padding: "7px 22px", color: "#7a1840", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "system-ui" }}>Skip</button>`;
-            c = c.replace("{!micActive && !micError && (", "{!micActive && !micError && (<>");
-            c = c.replace("🎤 Blow the candle!</button>", "🎤 Blow the candle!</button>" + skipBtn + "</>");
-            c = c.replace("transition:\"width 0.05s linear\"}}/>", "transition:\"width 0.05s linear\"}}/></div>" + skipBtn + "<div style={{display:\"none\"}}>");
-            fs.writeFileSync(p, c);
-          '
-      - run: pnpm --filter @workspace/space-warp build
-        env:
-          PORT: "3000"
-          BASE_PATH: /mehek-17/
-      - run: |
-          mkdir -p artifacts/space-warp/dist/public/attached_assets
-          cp -r attached_assets/* artifacts/space-warp/dist/public/attached_assets/ 2>/dev/null || true
+          const p = "artifacts/space-warp/src/pages/BirthdayPage.tsx";
+          let c = fs.readFileSync(p, "utf8");
+          c = c.replace("setTimeout(()=>doHappyBirthday(ctx),700);", "");
+          c = c.replaceAll("audioRef.current = ctx;", 'if (ctx.state === "suspended") ctx.resume(); audioRef.current = ctx;');
+          c = c.replace("{audio:true}", "{audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}");
+          c = c.replace("analyRef.current.getByteFrequencyData(data);", "analyRef.current.getByteTimeDomainData(data);");
+          c = c.replace("const avg=data.reduce((a,b)=>a+b,0)/data.length;", "const avg=data.reduce((a,b)=>a+Math.abs(b-128),0)/data.length;");
+          c = c.replace(/78/g, "12").replace("frames>=8", "frames>=3");
+          c = c.replace("@keyframes creditsFade { 0% { opacity:0; } 100% { opacity:1; } }", "@keyframes creditsFade { 0% { opacity:0; } 100% { opacity:1; } } @keyframes toastSlide { 0% { transform: translateY(-140%); opacity: 0; } 7% { transform: translateY(0); opacity: 1; } 93% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-140%); opacity: 0; } }");
+          const cakeMusic = [
+            'const CAKE_DOT_COLORS = ["#ff85c2","#ffd700","#c084fc","#60c8f5"];',
+            'useEffect(() => {',
+            '  if (showCreds) return;',
+            '  let alive = true;',
+            '  let timer: any;',
+            '  let ctx: AudioContext | null = null;',
+            '  const startSong = () => {',
+            '    if (!alive || document.hidden) return;',
+            '    try {',
+            '      if (!ctx) ctx = new (window.AudioContext || (window as any).webkitAudioContext)();',
+            '      if (ctx.state === "suspended") ctx.resume();',
+            '      const t = ctx.currentTime;',
+            '      const notes = [',
+            '        [261.6,.25],[261.6,.25],[293.7,.5],[261.6,.5],[349.2,.5],[329.6,1],',
+            '        [261.6,.25],[261.6,.25],[293.7,.5],[261.6,.5],[392,.5],[349.2,1],',
+            '        [261.6,.25],[261.6,.25],[523.3,.5],[440,.5],[349.2,.5],[329.6,.5],[293.7,1],',
+            '        [466.2,.25],[466.2,.25],[440,.5],[349.2,.5],[392,.5],[349.2,1.5]',
+            '      ];',
+            '      let e = 0;',
+            '      notes.forEach(([freq, dur]) => {',
+            '        const o = ctx!.createOscillator(); const g = ctx!.createGain();',
+            '        o.connect(g); g.connect(ctx!.destination);',
+            '        o.frequency.value = freq; o.type = "triangle";',
+            '        g.gain.setValueAtTime(0, t + e);',
+            '        g.gain.linearRampToValueAtTime(0.12, t + e + 0.03);',
+            '        g.gain.exponentialRampToValueAtTime(0.001, t + e + dur * 0.85);',
+            '        o.start(t + e); o.stop(t + e + dur);',
+            '        e += dur * 0.52;',
+            '      });',
+            '      timer = setTimeout(startSong, (e + 1.2) * 1000);',
+            '    } catch {}',
+            '  };',
+            '  const onVis = () => { if (document.hidden) { clearTimeout(timer); ctx?.suspend(); } else { ctx?.resume(); startSong(); } };',
+            '  document.addEventListener("visibilitychange", onVis);',
+            '  startSong();',
+            '  window.addEventListener("pointerdown", startSong, { once: true });',
+            '  return () => { alive = false; clearTimeout(timer); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("pointerdown", startSong); ctx?.close().catch(() => {}); };',
+            '}, [showCreds]);'
+          ].join("\n");
+          c = c.replace('const CAKE_DOT_COLORS = ["#ff85c2","#ffd700","#c084fc","#60c8f5"];', cakeMusic);
+          const creditsHook = [
+            'function EndCredits() {',
+            '  useEffect(() => {',
+            '    const sfx = new Audio("./The%20end.mp3");',
+            '    const bgm = new Audio("./Blind%20spots.mp3");',
+            '    bgm.loop = true;',
+            '    let bgmStarted = false;',
+            '    const startBgm = () => {',
+            '      if (bgmStarted || document.hidden) return;',
+            '      bgmStarted = true;',
+            '      try { bgm.currentTime = 13; } catch {}',
+            '      bgm.play().catch(() => {});',
+            '    };',
+            '    bgm.addEventListener("loadedmetadata", () => { bgm.currentTime = 13; }, { once: true });',
+            '    sfx.addEventListener("ended", startBgm, { once: true });',
+            '    const t1 = setTimeout(() => { if (!document.hidden) sfx.play().catch(() => startBgm()); }, 2000);',
+            '    const t2 = setTimeout(startBgm, 3600);',
+            '    const onVis = () => {',
+            '      if (document.hidden) { sfx.pause(); bgm.pause(); }',
+            '      else if (bgmStarted) { bgm.play().catch(() => {}); }',
+            '    };',
+            '    document.addEventListener("visibilitychange", onVis);',
+            '    return () => { clearTimeout(t1); clearTimeout(t2); document.removeEventListener("visibilitychange", onVis); sfx.pause(); bgm.pause(); };',
+            '  }, []);'
+          ].join("\n");
+          c = c.replace("function EndCredits() {", creditsHook);
+          c = c.replace("{showCreds && <EndCredits/>}", '{showCreds && (<><EndCredits/><img src="./graduation-achievement-v0-0jaqu6i0po0b1.png" alt="Achievement Made! The End?" style={{position:"fixed",top:14,right:14,zIndex:999,width:"clamp(215px,62vw,310px)",height:"auto",imageRendering:"pixelated",boxShadow:"0 8px 24px rgba(0,0,0,0.75)",transform:"translateY(-140%)",opacity:0,animation:"toastSlide 9s cubic-bezier(0.22,1,0.36,1) 2s forwards",pointerEvents:"none"}} /></>)}');
+          const skipBtn = '<button onClick={() => { blowOut(); setShowWish(true); setShowCreds(true); }} style={{ background: "rgba(255,255,255,0.45)", border: "1px solid rgba(180,50,90,0.35)", borderRadius: "50px", padding: "7px 22px", color: "#7a1840", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "system-ui" }}>Skip</button>';
