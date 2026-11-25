@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Space Warp Experience"
+version = "1.0.0"
+id = "artifacts/space-warp"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23344
+
+[services.development]
+run = "pnpm --filter @workspace/space-warp run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/space-warp", "run", "build" ]
+publicDir = "artifacts/space-warp/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23344"
+BASE_PATH = "/"
