@@ -27,6 +27,15 @@ jobs:
           find artifacts/space-warp/src -type f \( -name "*.tsx" -o -name "*.ts" \) -exec sed -i -E 's/(src|gif)( *= *| *: *)(["\x27`])\//\1\2\3.\//g' {} +
           node -e '
             const fs = require("fs");
+            let html = fs.readFileSync("artifacts/space-warp/index.html", "utf8");
+            html = html.replace(/<title>.*?<\/title>/, "<title>Happy Birthday Mehek! 🌸</title>");
+            html = html.replace(/href="[^"]*favicon[^"]*"/g, "href=\"./29a10c0c97b545a482e4033983bfd46e.png\"");
+            fs.writeFileSync("artifacts/space-warp/index.html", html);
+
+            let am = fs.readFileSync("artifacts/space-warp/src/components/AmbientMusic.tsx", "utf8");
+            am = am.replace("return () => { stopAll(); ctxRef.current?.close(); };", "const onVis = () => { if (document.hidden) ctxRef.current?.suspend(); else ctxRef.current?.resume(); }; document.addEventListener(\"visibilitychange\", onVis); return () => { document.removeEventListener(\"visibilitychange\", onVis); stopAll(); ctxRef.current?.close(); };");
+            fs.writeFileSync("artifacts/space-warp/src/components/AmbientMusic.tsx", am);
+
             const p = "artifacts/space-warp/src/pages/BirthdayPage.tsx";
             let c = fs.readFileSync(p, "utf8");
             c = c.replaceAll("audioRef.current = ctx;", "if (ctx.state === \"suspended\") ctx.resume(); audioRef.current = ctx;");
@@ -42,7 +51,7 @@ jobs:
               let timer: any;
               let ctx: AudioContext | null = null;
               const startSong = () => {
-                if (!alive) return;
+                if (!alive || document.hidden) return;
                 try {
                   if (!ctx) ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
                   if (ctx.state === "suspended") ctx.resume();
@@ -67,9 +76,11 @@ jobs:
                   timer = setTimeout(startSong, (e + 1.2) * 1000);
                 } catch {}
               };
+              const onVis = () => { if (document.hidden) { clearTimeout(timer); ctx?.suspend(); } else { ctx?.resume(); startSong(); } };
+              document.addEventListener("visibilitychange", onVis);
               startSong();
               window.addEventListener("pointerdown", startSong, { once: true });
-              return () => { alive = false; clearTimeout(timer); window.removeEventListener("pointerdown", startSong); ctx?.close().catch(() => {}); };
+              return () => { alive = false; clearTimeout(timer); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("pointerdown", startSong); ctx?.close().catch(() => {}); };
             }, [showCreds]);`;
             c = c.replace("const CAKE_DOT_COLORS = [\"#ff85c2\",\"#ffd700\",\"#c084fc\",\"#60c8f5\"];", cakeMusic);
             const creditsHook = `function EndCredits() {
@@ -79,7 +90,7 @@ jobs:
                 bgm.loop = true;
                 let bgmStarted = false;
                 const startBgm = () => {
-                  if (bgmStarted) return;
+                  if (bgmStarted || document.hidden) return;
                   bgmStarted = true;
                   try { bgm.currentTime = 13; } catch {}
                   bgm.play().catch(() => {});
@@ -87,10 +98,15 @@ jobs:
                 bgm.addEventListener("loadedmetadata", () => { bgm.currentTime = 13; }, { once: true });
                 sfx.addEventListener("ended", startBgm, { once: true });
                 const t1 = setTimeout(() => {
-                  sfx.play().catch(() => startBgm());
+                  if (!document.hidden) sfx.play().catch(() => startBgm());
                 }, 2000);
                 const t2 = setTimeout(startBgm, 3600);
-                return () => { clearTimeout(t1); clearTimeout(t2); sfx.pause(); bgm.pause(); };
+                const onVis = () => {
+                  if (document.hidden) { sfx.pause(); bgm.pause(); }
+                  else if (bgmStarted) { bgm.play().catch(() => {}); }
+                };
+                document.addEventListener("visibilitychange", onVis);
+                return () => { clearTimeout(t1); clearTimeout(t2); document.removeEventListener("visibilitychange", onVis); sfx.pause(); bgm.pause(); };
               }, []);`;
             c = c.replace("function EndCredits() {", creditsHook);
             c = c.replace("{showCreds && <EndCredits/>}", "{showCreds && (<><EndCredits/><img src=\"./graduation-achievement-v0-0jaqu6i0po0b1.png\" alt=\"Achievement Made! The End?\" style={{position:\"fixed\",top:14,right:14,zIndex:999,width:\"clamp(215px,62vw,310px)\",height:\"auto\",imageRendering:\"pixelated\",boxShadow:\"0 8px 24px rgba(0,0,0,0.75)\",transform:\"translateY(-140%)\",opacity:0,animation:\"toastSlide 9s cubic-bezier(0.22,1,0.36,1) 2s forwards\",pointerEvents:\"none\"}} /></>)}");
