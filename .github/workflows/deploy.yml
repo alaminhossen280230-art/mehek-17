@@ -24,9 +24,7 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --no-frozen-lockfile
       - run: |
-          find artifacts/space-warp/src -type f \( -name "*.tsx" -o -name "*.ts" \) -exec sed -i 's|src="/|src="./|g' {} +
-          find artifacts/space-warp/src -type f \( -name "*.tsx" -o -name "*.ts" \) -exec sed -i "s|src='/|src='./|g" {} +
-          find artifacts/space-warp/src -type f \( -name "*.tsx" -o -name "*.ts" \) -exec sed -i 's|src={`\/|src={`\.\/|g' {} +
+          find artifacts/space-warp/src -type f \( -name "*.tsx" -o -name "*.ts" \) -exec sed -i -E 's/(src|gif)( *= *| *: *)(["\x27`])\//\1\2\3.\//g' {} +
       - run: pnpm --filter @workspace/space-warp build
         env:
           PORT: "3000"
