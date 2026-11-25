@@ -30,7 +30,7 @@ jobs:
       - run: pnpm --filter @workspace/space-warp build
         env:
           PORT: "3000"
-          BASE_PATH: /Levi/
+          BASE_PATH: /mehek-17/
       - run: |
           mkdir -p artifacts/space-warp/dist/public/attached_assets
           cp -r attached_assets/* artifacts/space-warp/dist/public/attached_assets/ 2>/dev/null || true
