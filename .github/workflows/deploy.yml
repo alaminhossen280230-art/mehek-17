@@ -29,15 +29,82 @@ jobs:
             const fs = require("fs");
             let html = fs.readFileSync("artifacts/space-warp/index.html", "utf8");
             html = html.replace(/<title>.*?<\/title>/, "<title>Happy Birthday Mehek! 🌸</title>");
-            html = html.replace(/href="[^"]*favicon[^"]*"/g, "href=\"./29a10c0c97b545a482e4033983bfd46e.png\"");
+            html = html.replace(/<link[^>]*rel="[^"]*icon[^"]*"[^>]*>/gi, "");
+            html = html.replace("</head>", "<link rel=\"icon\" type=\"image/png\" href=\"./29a10c0c97b545a482e4033983bfd46e.png?v=2\" /><link rel=\"apple-touch-icon\" href=\"./29a10c0c97b545a482e4033983bfd46e.png?v=2\" /></head>");
             fs.writeFileSync("artifacts/space-warp/index.html", html);
 
-            let am = fs.readFileSync("artifacts/space-warp/src/components/AmbientMusic.tsx", "utf8");
-            am = am.replace("return () => { stopAll(); ctxRef.current?.close(); };", "const onVis = () => { if (document.hidden) ctxRef.current?.suspend(); else ctxRef.current?.resume(); }; document.addEventListener(\"visibilitychange\", onVis); return () => { document.removeEventListener(\"visibilitychange\", onVis); stopAll(); ctxRef.current?.close(); };");
-            fs.writeFileSync("artifacts/space-warp/src/components/AmbientMusic.tsx", am);
+            const cleanAmbient = `import { useEffect, useRef } from "react";
+import { Phase } from "../App";
+
+export default function AmbientMusic({ phase }: { phase: Phase }) {
+  const travelRef = useRef<HTMLAudioElement | null>(null);
+  const spaceRef = useRef<HTMLAudioElement | null>(null);
+  const phaseRef = useRef<Phase>(phase);
+  phaseRef.current = phase;
+
+  useEffect(() => {
+    const travel = new Audio("./travel.mp3");
+    const space = new Audio("./space.mp3");
+    space.loop = true;
+    space.volume = 0.65;
+    travelRef.current = travel;
+    spaceRef.current = space;
+
+    const unlock = () => {
+      if (document.hidden) return;
+      const p = phaseRef.current;
+      if ((p === "warp" || p === "arriving") && travel.paused && !travel.ended) {
+        travel.play().catch(() => {});
+      } else if (p === "orbit" && space.paused) {
+        space.play().catch(() => {});
+      }
+    };
+
+    const onVis = () => {
+      if (document.hidden) {
+        travel.pause();
+        space.pause();
+      } else {
+        const p = phaseRef.current;
+        if ((p === "warp" || p === "arriving") && !travel.ended) travel.play().catch(() => {});
+        else if (p === "orbit") space.play().catch(() => {});
+      }
+    };
+
+    window.addEventListener("pointerdown", unlock);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("visibilitychange", onVis);
+      travel.pause();
+      space.pause();
+    };
+  }, []);
+
+  useEffect(() => {
+    const travel = travelRef.current;
+    const space = spaceRef.current;
+    if (!travel || !space) return;
+
+    if (phase === "warp" || phase === "arriving") {
+      space.pause();
+      if (!document.hidden && !travel.ended) travel.play().catch(() => {});
+    } else if (phase === "orbit") {
+      travel.pause();
+      if (!document.hidden) space.play().catch(() => {});
+    } else {
+      travel.pause();
+      space.pause();
+    }
+  }, [phase]);
+
+  return null;
+}`;
+            fs.writeFileSync("artifacts/space-warp/src/components/AmbientMusic.tsx", cleanAmbient);
 
             const p = "artifacts/space-warp/src/pages/BirthdayPage.tsx";
             let c = fs.readFileSync(p, "utf8");
+            c = c.replace("setTimeout(()=>doHappyBirthday(ctx),700);", "");
             c = c.replaceAll("audioRef.current = ctx;", "if (ctx.state === \"suspended\") ctx.resume(); audioRef.current = ctx;");
             c = c.replace("{audio:true}", "{audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}");
             c = c.replace("analyRef.current.getByteFrequencyData(data);", "analyRef.current.getByteTimeDomainData(data);");
@@ -123,17 +190,3 @@ jobs:
       - run: |
           mkdir -p artifacts/space-warp/dist/public/attached_assets
           cp -r attached_assets/* artifacts/space-warp/dist/public/attached_assets/ 2>/dev/null || true
-          cp -rn attached_assets/* artifacts/space-warp/dist/public/ 2>/dev/null || true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: artifacts/space-warp/dist/public
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
