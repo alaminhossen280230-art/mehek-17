@@ -34,6 +34,38 @@ jobs:
             c = c.replace("analyRef.current.getByteFrequencyData(data);", "analyRef.current.getByteTimeDomainData(data);");
             c = c.replace("const avg=data.reduce((a,b)=>a+b,0)/data.length;", "const avg=data.reduce((a,b)=>a+Math.abs(b-128),0)/data.length;");
             c = c.replace(/78/g, "12").replace("frames>=8", "frames>=3");
+            c = c.replace("@keyframes creditsFade { 0% { opacity:0; } 100% { opacity:1; } }", "@keyframes creditsFade { 0% { opacity:0; } 100% { opacity:1; } } @keyframes toastSlide { 0% { transform: translateY(-130%); opacity: 0; } 12% { transform: translateY(0); opacity: 1; } 82% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-130%); opacity: 0; } }");
+            const creditsHook = `function EndCredits() {
+              useEffect(() => {
+                try {
+                  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                  if (ctx.state === "suspended") ctx.resume();
+                  const t = ctx.currentTime;
+                  [587.33, 880, 1174.66].forEach((f, idx) => {
+                    const o = ctx.createOscillator(); const g = ctx.createGain();
+                    o.type = "sine"; o.frequency.value = f;
+                    o.connect(g); g.connect(ctx.destination);
+                    g.gain.setValueAtTime(0, t + idx * 0.11);
+                    g.gain.linearRampToValueAtTime(0.14, t + idx * 0.11 + 0.02);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.11 + 0.55);
+                    o.start(t + idx * 0.11); o.stop(t + idx * 0.11 + 0.6);
+                  });
+                  const melody = [523.25, 659.25, 783.99, 1046.5, 987.77, 783.99, 659.25, 587.33, 659.25, 523.25];
+                  melody.forEach((f, idx) => {
+                    const st = t + 0.85 + idx * 0.65;
+                    const o = ctx.createOscillator(); const g = ctx.createGain();
+                    o.type = "triangle"; o.frequency.value = f;
+                    o.connect(g); g.connect(ctx.destination);
+                    g.gain.setValueAtTime(0, st);
+                    g.gain.linearRampToValueAtTime(0.07, st + 0.04);
+                    g.gain.exponentialRampToValueAtTime(0.001, st + 0.6);
+                    o.start(st); o.stop(st + 0.65);
+                  });
+                  return () => { ctx.close().catch(() => {}); };
+                } catch {}
+              }, []);`;
+            c = c.replace("function EndCredits() {", creditsHook);
+            c = c.replace("animation:\"creditsFade 1.5s ease both\"}>", "animation:\"creditsFade 1.5s ease both\"}><img src=\"./graduation-achievement-v0-0jaqu6i0po0b1.png\" alt=\"Achievement Made! The End?\" style={{position:\"fixed\",top:14,right:14,zIndex:60,width:\"clamp(215px,62vw,310px)\",height:\"auto\",imageRendering:\"pixelated\",boxShadow:\"0 8px 24px rgba(0,0,0,0.75)\",animation:\"toastSlide 5.2s cubic-bezier(0.22,1,0.36,1) forwards\",pointerEvents:\"none\"}} />");
             const skipBtn = `<button onClick={() => { blowOut(); setShowWish(true); setShowCreds(true); }} style={{ background: "rgba(255,255,255,0.45)", border: "1px solid rgba(180,50,90,0.35)", borderRadius: "50px", padding: "7px 22px", color: "#7a1840", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "system-ui" }}>Skip</button>`;
             c = c.replace("{!micActive && !micError && (", "{!micActive && !micError && (<>");
             c = c.replace("🎤 Blow the candle!</button>", "🎤 Blow the candle!</button>" + skipBtn + "</>");
