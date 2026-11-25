@@ -12,6 +12,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
           version: 9
@@ -29,7 +43,7 @@ jobs:
           node << 'EOF'
           const fs = require("fs");
           let h = fs.readFileSync("artifacts/space-warp/index.html", "utf8");
-          h = h.replace(/<title>.*?<\/title>/, "<title>Happy Birthday Mehek! 🌸</title>").replace(/<link[^>]*rel="[^"]*icon[^"]*"[^>]*>/gi, "").replace("</head>", '<link rel="icon" type="image/png" href="./29a10c0c97b545a482e4033983bfd46e.png?v=4" /></head>');
+          h = h.replace(/<title>.*?<\/title>/, "<title>Happy Birthday Mehek! 🌸</title>").replace(/<link[^>]*rel="[^"]*icon[^"]*"[^>]*>/gi, "").replace("</head>", '<link rel="icon" type="image/png" href="./29a10c0c97b545a482e4033983bfd46e.png?v=5" /></head>');
           fs.writeFileSync("artifacts/space-warp/index.html", h);
 
           fs.writeFileSync("artifacts/space-warp/src/components/AmbientMusic.tsx", `import { useEffect, useRef } from "react";
@@ -39,11 +53,13 @@ jobs:
             pRef.current = phase;
             useEffect(() => {
               const t = new Audio("./travel.mp3"), s = new Audio("./space.mp3");
-              s.loop = true; s.volume = 0.65; tRef.current = t; sRef.current = s;
+              t.preload = "auto"; s.preload = "auto"; s.loop = true; s.volume = 0.65;
+              t.addEventListener("loadedmetadata", () => { if (t.currentTime < 5) t.currentTime = 5; }, { once: true });
+              tRef.current = t; sRef.current = s;
               const play = () => {
                 if (document.hidden) return;
                 const p = pRef.current;
-                if ((p === "warp" || p === "arriving") && t.paused && !t.ended) t.play().catch(() => {});
+                if ((p === "warp" || p === "arriving") && t.paused && !t.ended) { if (t.currentTime < 5) t.currentTime = 5; t.play().catch(() => {}); }
                 else if (p === "orbit" && s.paused) s.play().catch(() => {});
               };
               const vis = () => { if (document.hidden) { t.pause(); s.pause(); } else play(); };
@@ -52,7 +68,7 @@ jobs:
             }, []);
             useEffect(() => {
               const t = tRef.current, s = sRef.current; if (!t || !s) return;
-              if (phase === "warp" || phase === "arriving") { s.pause(); if (!document.hidden && !t.ended) t.play().catch(() => {}); }
+              if (phase === "warp" || phase === "arriving") { s.pause(); if (!document.hidden && !t.ended) { if (t.currentTime < 5) t.currentTime = 5; t.play().catch(() => {}); } }
               else if (phase === "orbit") { t.pause(); if (!document.hidden) s.play().catch(() => {}); }
               else { t.pause(); s.pause(); }
             }, [phase]);
